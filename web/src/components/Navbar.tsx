@@ -5,6 +5,7 @@ import Image from "next/image";
 import {useAuth} from "@/context/AuthContext";
 import {hasMinRole} from "@/lib/roles";
 import {useState} from "react";
+import Avatar from "@/components/Avatar";
 
 export default function Navbar() {
 	const {user, logout, loading} = useAuth();
@@ -93,9 +94,7 @@ export default function Navbar() {
 								href="/profile"
 								className="flex items-center gap-2 hover:opacity-80 transition-opacity"
 							>
-								<div className="w-8 h-8 rounded-full bg-gradient-to-br from-nova to-comet flex items-center justify-center text-xs font-bold text-white">
-									{user.username[0].toUpperCase()}
-								</div>
+								<Avatar username={user.username} avatarUrl={user.avatar_url} />
 								<span className="text-sm font-medium text-moonlight">
 									{user.username}
 								</span>

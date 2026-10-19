@@ -6,6 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useAuth } from "@/context/AuthContext";
 import Link from "next/link";
+import Avatar from "@/components/Avatar";
 import {
   Form,
   FormField,
@@ -52,12 +53,44 @@ const profileSchema = z.object({
 
 type ProfileValues = z.infer<typeof profileSchema>;
 
+const AVATAR_SIZE = 256;
+
+/** Center-crops an image to a square and downsizes it to AVATAR_SIZE px. */
+async function cropToSquare(file: File): Promise<File> {
+  const bitmap = await createImageBitmap(file);
+  const side = Math.min(bitmap.width, bitmap.height);
+  const canvas = document.createElement("canvas");
+  canvas.width = AVATAR_SIZE;
+  canvas.height = AVATAR_SIZE;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("Could not process image");
+  ctx.drawImage(
+    bitmap,
+    (bitmap.width - side) / 2,
+    (bitmap.height - side) / 2,
+    side,
+    side,
+    0,
+    0,
+    AVATAR_SIZE,
+    AVATAR_SIZE,
+  );
+  bitmap.close();
+  const blob = await new Promise<Blob | null>((resolve) =>
+    canvas.toBlob(resolve, "image/webp", 0.9),
+  );
+  if (!blob) throw new Error("Could not process image");
+  return new File([blob], "avatar.webp", { type: "image/webp" });
+}
+
 export default function ProfilePage() {
   const { user, token, refreshUser } = useAuth();
   const [success, setSuccess] = useState("");
   const [error, setError] = useState("");
   const [walletLoading, setWalletLoading] = useState(false);
   const [walletError, setWalletError] = useState("");
+  const [avatarUploading, setAvatarUploading] = useState(false);
+  const [avatarError, setAvatarError] = useState("");
 
   const form = useForm<ProfileValues>({
     resolver: zodResolver(profileSchema),
@@ -91,6 +124,57 @@ export default function ProfilePage() {
       setTimeout(() => setSuccess(""), 3000);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Update failed");
+    }
+  };
+
+  const saveAvatarUrl = async (avatarUrl: string | null) => {
+    const res = await fetch("/api/auth/me", {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ avatar_url: avatarUrl }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "Failed to save avatar");
+    await refreshUser();
+  };
+
+  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    setAvatarError("");
+    setAvatarUploading(true);
+    try {
+      const cropped = await cropToSquare(file);
+      const formData = new FormData();
+      formData.append("files", cropped);
+      const res = await fetch("/api/upload", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData,
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Upload failed");
+      await saveAvatarUrl(data.urls[0]);
+    } catch (err) {
+      setAvatarError(err instanceof Error ? err.message : "Avatar upload failed");
+    } finally {
+      setAvatarUploading(false);
+    }
+  };
+
+  const handleAvatarRemove = async () => {
+    setAvatarError("");
+    setAvatarUploading(true);
+    try {
+      await saveAvatarUrl(null);
+    } catch (err) {
+      setAvatarError(err instanceof Error ? err.message : "Failed to remove avatar");
+    } finally {
+      setAvatarUploading(false);
     }
   };
 
@@ -173,9 +257,11 @@ export default function ProfilePage() {
       {/* Header */}
       <div className="mb-8 animate-in">
         <div className="flex items-center gap-4 mb-4">
-          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-nova to-plasma flex items-center justify-center text-2xl font-bold text-white shadow-lg shadow-nova/20">
-            {user.username[0].toUpperCase()}
-          </div>
+          <Avatar
+            username={user.username}
+            avatarUrl={user.avatar_url}
+            className="w-16 h-16 text-2xl shadow-lg shadow-nova/20"
+          />
           <div>
             <h1 className="font-display font-bold text-3xl text-starlight">{user.username}</h1>
             <div className="flex items-center gap-3 text-sm text-ash mt-0.5">
@@ -183,6 +269,33 @@ export default function ProfilePage() {
               <span className="tag tag-nova text-xs">{user.role}</span>
               {user.created_at && (
                 <span>Joined {new Date(user.created_at).toLocaleDateString()}</span>
+              )}
+            </div>
+            <div>
+              <div className="mt-2 flex items-center gap-3 text-sm">
+                <label className="btn-ghost !py-1 !px-3 text-xs cursor-pointer">
+                  {avatarUploading ? "Uploading..." : "Change avatar"}
+                  <input
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp"
+                    className="hidden"
+                    disabled={avatarUploading}
+                    onChange={handleAvatarChange}
+                  />
+                </label>
+                {user.avatar_url && (
+                  <button
+                    type="button"
+                    onClick={handleAvatarRemove}
+                    disabled={avatarUploading}
+                    className="text-xs text-ash hover:text-starlight"
+                  >
+                    Remove
+                  </button>
+                )}
+              </div>
+              {avatarError && (
+                <p className="text-xs text-supernova mt-1">{avatarError}</p>
               )}
             </div>
           </div>
