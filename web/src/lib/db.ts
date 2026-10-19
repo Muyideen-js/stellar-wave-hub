@@ -26,6 +26,11 @@ export const ratingsCol = {
 		return col("ratings");
 	},
 };
+export const reportsCol = {
+	get ref() {
+		return col("reports");
+	},
+};
 export const financialSnapshotsCol = {
 	get ref() {
 		return col("financial_snapshots");

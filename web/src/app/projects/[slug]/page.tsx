@@ -135,6 +135,13 @@ export default function ProjectDetailPage({
 	const [ratingStep, setRatingStep] = useState<"idle" | "onchain" | "saving">("idle");
 	const [lastTxHash, setLastTxHash] = useState<string | null>(null);
 
+	// Report review state
+	const [reportingId, setReportingId] = useState<number | null>(null);
+	const [reportReason, setReportReason] = useState("spam");
+	const [reportBusy, setReportBusy] = useState(false);
+	const [reportMsg, setReportMsg] = useState("");
+	const [reportedIds, setReportedIds] = useState<number[]>([]);
+
 	useEffect(() => {
 		fetch(`/api/projects/${slug}`)
 			.then((r) => r.json())
@@ -181,6 +188,35 @@ export default function ProjectDetailPage({
 			.then((rated) => setAlreadyRatedOnChain(rated))
 			.catch(() => {});
 	}, [isOnChainProject, project, user]);
+
+	const submitReport = async (e: React.FormEvent<HTMLFormElement>) => {
+		e.preventDefault();
+		if (!token || reportingId === null) return;
+		setReportBusy(true);
+		setReportMsg("");
+		try {
+			const res = await fetch("/api/reports", {
+				method: "POST",
+				headers: {
+					"Content-Type": "application/json",
+					Authorization: `Bearer ${token}`,
+				},
+				body: JSON.stringify({
+					target_type: "rating",
+					target_id: reportingId,
+					reason: reportReason,
+				}),
+			});
+			const data = await res.json();
+			if (!res.ok) throw new Error(data.error);
+			setReportedIds((p) => [...p, reportingId]);
+			setReportingId(null);
+			setReportReason("spam");
+		} catch (err) {
+			setReportMsg(err instanceof Error ? err.message : "Failed to report");
+		}
+		setReportBusy(false);
+	};
 
 	const submitRating = async (e: React.FormEvent<HTMLFormElement>) => {
 		e.preventDefault();
@@ -808,7 +844,48 @@ export default function ProjectDetailPage({
 													On-chain
 												</a>
 											)}
+											{user && user.id !== rating.user_id && (
+												reportedIds.includes(rating.id) ? (
+													<span className="ml-auto text-ash">Reported</span>
+												) : (
+													<button
+														type="button"
+														onClick={() => {
+															setReportingId(reportingId === rating.id ? null : rating.id);
+															setReportMsg("");
+														}}
+														className="ml-auto inline-flex items-center gap-1 text-ash hover:text-supernova transition-colors"
+														aria-label={`Report review by ${rating.username}`}
+													>
+														<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+															<path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z" />
+															<line x1="4" y1="22" x2="4" y2="15" />
+														</svg>
+														Report
+													</button>
+												)
+											)}
 										</div>
+										{reportingId === rating.id && (
+											<form onSubmit={submitReport} className="mt-4 flex items-center gap-3 flex-wrap">
+												<select
+													className="input-field !w-auto"
+													value={reportReason}
+													onChange={(e) => setReportReason(e.target.value)}
+													aria-label="Report reason"
+												>
+													<option value="spam">Spam</option>
+													<option value="abusive">Abusive or offensive</option>
+													<option value="off_topic">Off topic</option>
+													<option value="misleading">Misleading</option>
+													<option value="other">Other</option>
+												</select>
+												<button type="submit" disabled={reportBusy} className="btn-nova !py-1.5 text-sm disabled:opacity-50">
+													{reportBusy ? "Sending..." : "Submit report"}
+												</button>
+												{reportMsg && <span className="text-xs text-supernova">{reportMsg}</span>}
+											</form>
+										)}
 									</div>
 								))}
 							</div>
