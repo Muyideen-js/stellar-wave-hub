@@ -1,0 +1,27 @@
+{
+  "default_branch": "main",
+  "branches": [
+    "main",
+    "origin",
+    "solver/issue-319",
+    "solver/issue-319-124-a0",
+    "solver/issue-533-69-a0",
+    "solver/issue-537-70-a0"
+  ],
+  "parent": {
+    "main": null,
+    "origin": "main",
+    "solver/issue-319": "main",
+    "solver/issue-319-124-a0": "solver/issue-319",
+    "solver/issue-533-69-a0": "main",
+    "solver/issue-537-70-a0": "main"
+  },
+  "order": [
+    "main",
+    "origin",
+    "solver/issue-319",
+    "solver/issue-533-69-a0",
+    "solver/issue-537-70-a0",
+    "solver/issue-319-124-a0"
+  ]
+}
