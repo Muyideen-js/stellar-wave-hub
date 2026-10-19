@@ -20,6 +20,7 @@ interface User {
   discord_username?: string;
   telegram_url?: string;
   website_url?: string;
+  avatar_url?: string | null;
   bio?: string;
   created_at?: string;
 }

@@ -16,11 +16,15 @@ export async function GET(
     snap.docs.map(async (d) => {
       const r = d.data();
       let username = "unknown";
+      let avatar_url: string | null = null;
       if (r.user_id) {
         const u = await usersCol.ref.doc(String(r.user_id)).get();
-        if (u.exists) username = u.data()!.username;
+        if (u.exists) {
+          username = u.data()!.username;
+          avatar_url = u.data()!.avatar_url ?? null;
+        }
       }
-      return { ...r, id: r.numericId ?? d.id, username };
+      return { ...r, id: r.numericId ?? d.id, username, avatar_url };
     })
   );
 

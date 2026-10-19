@@ -3,6 +3,7 @@
 import {useEffect, useState, use} from "react";
 import {useAuth} from "@/context/AuthContext";
 import StarRating from "@/components/StarRating";
+import Avatar from "@/components/Avatar";
 import Link from "next/link";
 import {
 	ON_CHAIN_ENABLED,
@@ -44,6 +45,7 @@ interface Rating {
 	review_text?: string;
 	tx_hash?: string;
 	username: string;
+	avatar_url?: string | null;
 	user_id: number;
 	created_at: string;
 }
@@ -750,9 +752,11 @@ export default function ProjectDetailPage({
 									>
 										<div className="flex items-center justify-between mb-3">
 											<div className="flex items-center gap-3">
-												<div className="w-9 h-9 rounded-full bg-gradient-to-br from-nova/40 to-comet/40 flex items-center justify-center text-xs font-bold text-white">
-													{rating.username[0].toUpperCase()}
-												</div>
+												<Avatar
+													username={rating.username}
+													avatarUrl={rating.avatar_url}
+													className="w-9 h-9 text-xs"
+												/>
 												<div>
 													<span className="font-medium text-starlight text-sm">
 														{rating.username}
